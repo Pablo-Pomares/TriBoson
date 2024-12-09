@@ -22,7 +22,7 @@ Double_t inv_mass(Float_t pt1, Float_t pt2, Float_t phi1, Float_t phi2, Float_t 
 }
 
 // Find the number of Z bosons on a event and its mass.
-// If >1 it returns (for now) a single mass. However, this is unimportant because event is discarted.
+// If >1 it returns (for now) a single mass. However, this is unimportant because event is discarded.
 std::tuple<UInt_t, Double_t> z_finder(Float_t muon_pt[4], Float_t muon_phi[4], Float_t muon_eta[4], Int_t muon_charge[4]){
   UInt_t num_z = 0;
   Double_t masses[2];
