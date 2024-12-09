@@ -30,35 +30,47 @@ void filter(){
   UInt_t nMuon, nJet;
   Float_t Jet_btagDeepB[20];
   Bool_t Muon_isGlobal[10];
+  Int_t Muon_charge[10];
   t_old->SetBranchAddress("nMuon", &nMuon);
   t_old->SetBranchAddress("nJet", &nJet);
   t_old->SetBranchAddress("Jet_btagDeepB", &Jet_btagDeepB);
   t_old->SetBranchAddress("Muon_isGlobal", &Muon_isGlobal);
+  t_old->SetBranchAddress("Muon_charge", &Muon_charge);
 
   TFile newfile("prueba1.root", "recreate");
   auto t_new = t_old->CloneTree(0);
 
   for (int i=0; i<nentries; i++){
     t_old->GetEntry(i);
+
+    int sumCharge = 0;
+    for (int j=0; j<nMuon; j++){
+      sumCharge += Muon_charge[j];
+    };
+    bool chargeViolation = sumCharge;
+
     bool passbTag = true;
     for (int j=0; j<nJet; j++){
       if (Jet_btagDeepB[j] > 0.5847){
         passbTag = false;
       };
     };
+
     bool passnMuon = false;
     if (nMuon == 4){
       passnMuon = true;
     };
+
     bool passAllGlobal = true;
-    for (int k=0; k<nMuon; k++){
-      if (Muon_isGlobal[k] == 0){
+    for (int j=0; j<nMuon; j++){
+      if (Muon_isGlobal[j] == 0){
         passAllGlobal = false;
       };
     };
-    if (passAllGlobal && passbTag && passnMuon) {
+    if (passAllGlobal && passbTag && passnMuon && !chargeViolation) {
       t_new->Fill();
     };
+
   };
 
   t_new->Print();
