@@ -28,7 +28,7 @@ void filter(){
 
   // Entry selection
   UInt_t nMuon, nJet;
-  Float_t Jet_btagDeepB[20];
+  Float_t Jet_btagDeepB[20], MET_significance;
   Bool_t Muon_isGlobal[10];
   Int_t Muon_charge[10];
   t_old->SetBranchAddress("nMuon", &nMuon);
@@ -36,6 +36,7 @@ void filter(){
   t_old->SetBranchAddress("Jet_btagDeepB", &Jet_btagDeepB);
   t_old->SetBranchAddress("Muon_isGlobal", &Muon_isGlobal);
   t_old->SetBranchAddress("Muon_charge", &Muon_charge);
+  t_old->SetBranchAddress("MET_significance", &MET_significance);
 
   TFile newfile("prueba1.root", "recreate");
   auto t_new = t_old->CloneTree(0);
@@ -67,7 +68,13 @@ void filter(){
         passAllGlobal = false;
       };
     };
-    if (passAllGlobal && passbTag && passnMuon && !chargeViolation) {
+
+    bool passMETsignificance = false;
+    if (MET_significance > 0.1){
+      passMETsignificance = true;
+    };
+
+    if (passAllGlobal && passbTag && passnMuon && !chargeViolation && passMETsignificance) {
       t_new->Fill();
     };
 
