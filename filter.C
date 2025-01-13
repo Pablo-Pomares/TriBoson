@@ -4,13 +4,19 @@
 //              all jets that passes a btag
 //
 // Created: 30 Nov 2024
-// Last Modified: 01 Dec 2024
+// Last Modified: 12 Jan 2025
 // Author: Pablo Pomares
 // Email: pablo.pomaresv@alumno.buap.mx
 //
 
-void filter(){
-  TFile *f_old = TFile::Open("root://eospublic.cern.ch//eos/opendata/cms/Run2016H/DoubleMuon/NANOAOD/UL2016_MiniAODv2_NanoAODv9-v1/2510000/127C2975-1B1C-A046-AABF-62B77E757A86.root");
+#include <string>
+#include <iostream>
+#include "TMath.h"
+#include "TFile.h"
+#include "TTree.h"
+
+void filter(const std::string& file_dir, const std::string& output_name){
+  TFile *f_old = TFile::Open(file_dir.c_str());
   TTree* t_old;
   f_old->GetObject("Events", t_old);
 
@@ -38,20 +44,20 @@ void filter(){
   t_old->SetBranchAddress("Muon_charge", &Muon_charge);
   t_old->SetBranchAddress("MET_significance", &MET_significance);
 
-  TFile newfile("prueba1.root", "recreate");
+  TFile newfile(output_name.c_str(), "recreate"); // Creates new file
   auto t_new = t_old->CloneTree(0);
 
-  for (int i=0; i<nentries; i++){
+  for (UInt_t i=0; i<nentries; i++){
     t_old->GetEntry(i);
 
     int sumCharge = 0;
-    for (int j=0; j<nMuon; j++){
+    for (UInt_t j=0; j<nMuon; j++){
       sumCharge += Muon_charge[j];
     };
     bool chargeViolation = sumCharge;
 
     bool passbTag = true;
-    for (int j=0; j<nJet; j++){
+    for (UInt_t j=0; j<nJet; j++){
       if (Jet_btagDeepB[j] > 0.5847){
         passbTag = false;
       };
@@ -63,7 +69,7 @@ void filter(){
     };
 
     bool passAllGlobal = true;
-    for (int j=0; j<nMuon; j++){
+    for (UInt_t j=0; j<nMuon; j++){
       if (Muon_isGlobal[j] == 0){
         passAllGlobal = false;
       };
