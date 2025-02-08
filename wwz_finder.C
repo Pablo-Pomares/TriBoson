@@ -1,18 +1,42 @@
-// **ROOT**
-// Version: ROOT 6.32.04
-// Description: For now, it identifies events with 1, 2 or no Z bosons
-//
-// Created: 08 Dec 2024
-// Last Modified: 10 Jan 2025
-// Author: Pablo Pomares
-// Email: pablo.pomaresv@alumno.buap.mx
+//***ROOT******************************************************************
+//*Version: ROOT 6.32.04                                                  *
+//*Description: Finds events that have 1 Z and calculates mT2 and mll from*
+//*             the remainig 2 muons                                      *
+//*                                                                       *
+//*Created: 08 Dec 2024                                                   *
+//*Last Modified: 07 Feb 2025                                             *
+//*Author: Pablo Pomares                                                  *
+//*Email: pablo.pomaresv@alumno.buap.mx                                   *
+//*************************************************************************
 
-// Function for the invariant mass
 
+#include <vector>
+#include <iostream>
 #include "lester_mt2_bisect.h"
+using namespace std;
 
 const Float_t muon_mass = 0.1056583; // MeV/c2
 
+//Saves relevant data to csv file
+void save_file(ofstream& out, vector<float> pt_visA, vector<float> phi_visA, vector<float> eta_visA,
+               vector<float> pt_visB, vector<float> phi_visB, vector<float> eta_visB,
+               vector<float> pt_MET, vector<float> phi_MET, vector<float> mT2, vector<float> mll){
+  int vsize = pt_visA.size();
+  if (out.is_open()){
+    out << "pt_visA" << "," << "phi_visA" << "," << "eta_visA" << "," << "pt_visB" << "," << "phi_visB" << "," << "eta_visB" << "," << "pt_MET" << "," << "phi_MET" << "," << "mT2" << ","<< "mll" << "\n";  
+    for (int i = 0; i < vsize; i++){
+      out << pt_visA[i] << "," << phi_visA[i] << "," << eta_visA[i] << "," << pt_visB[i] << "," <<  phi_visB[i] << "," << eta_visB[i] << "," << pt_MET[i] << "," << phi_MET[i] << "," <<  mT2[i] << "," <<  mll[i] << "\n";
+    }
+    out.close();
+    cout << "File written succesfully!\n";
+  }
+  else {
+    cout << "Error opening file\n";
+  }
+}
+
+
+// Function for the invariant mass
 Double_t inv_mass(Float_t pt1, Float_t pt2, Float_t phi1, Float_t phi2, Float_t eta1, Float_t eta2) {
 
   Double_t eta_diff = eta1 - eta2;
@@ -26,20 +50,28 @@ Double_t inv_mass(Float_t pt1, Float_t pt2, Float_t phi1, Float_t phi2, Float_t 
 }
 
 
-// Find the number of Z bosons on a event and its mass.
-// If >1 it returns (for now) a single mass. However, this is unimportant because event is discarded.
+// Find the Z bosons on a event and its mass.
+// If it finds more than one candidate it selects the more probable one. 
+// i. e., the one with the greater absolute difference of phi.
 class Z_finder{
-  public:
+  private:
+    int z_temp_index[4] = {-1, -1, -1, -1}; // If more than one particle found in Z range the first pair                                             //
+                                            // would correspond to the index of first founded Z and the last pair for the second one.
+    int z_temp_count = 0;
     UInt_t num_z;
-    Double_t masses[2];
+
+  public:
+    bool hasZ = false;
+    Double_t massZ = 0.0;
     std::array<int, 2> z_muon_index;
+    Double_t pi = TMath::Pi();
 
     Z_finder(Float_t muon_pt[4], Float_t muon_phi[4], Float_t muon_eta[4], Int_t muon_charge[4])
-      : num_z(0), masses{0.0, 0.0}, z_muon_index{0, 0}
+      : num_z(0), z_muon_index{-1, -1}
     {
       for (int i=0; i<4; i++){
         int local_z = 0; // Number of Z candidates for that share a muon
-        int z_local_index[3] {-1, -1, -1};
+        int z_local_index[3] = {-1, -1, -1};
         Double_t local_masses[2] = {0., 0.};
 
         for (int j=i+1; j<4; j++){
@@ -56,7 +88,6 @@ class Z_finder{
           // Check for different charge
           bool same_charge = q1 + q2;
           z_local_index[0] = i;
-          z_muon_index[0] = i;
 
           if (!same_charge) {
             Double_t m = inv_mass(pt1, pt2, phi1, phi2, eta1, eta2);
@@ -68,31 +99,61 @@ class Z_finder{
           };
         };
 
-        // If more there is more than one local Z choose the one with greater
-        // phi difference
+        if (local_z){
+          z_temp_index[z_temp_count] = z_local_index[0];
+          num_z += 1;
+          z_temp_count += 1;
+        }
+
+        // If more there is more than one local Z choose the one whose
+        // phi difference is closest to pi
         if (local_z == 2){
           float phi1 = TMath::Abs(muon_phi[z_local_index[0]]);
           float phi2 = TMath::Abs(muon_phi[z_local_index[1]]);
           float phi3 = TMath::Abs(muon_phi[z_local_index[2]]);
 
-          float diff1_2 = phi1 - phi2;
-          float diff1_3 = phi1 - phi3;
+          float diff1_2 = TMath::Abs(phi1 + phi2 - pi);
+          float diff1_3 = TMath::Abs(phi1 + phi3 - pi);
 
-          if (diff1_2 > diff1_3){
-            masses[num_z] = local_masses[0];
-            z_muon_index[1] = z_local_index[1];
+          if (diff1_2 < diff1_3){
+            massZ = local_masses[0];
+            z_temp_index[z_temp_count] = z_local_index[1];
           }
           else {
-            masses[num_z] = local_masses[1];
-            z_muon_index[1] = z_local_index[2];
+            massZ = local_masses[1];
+            z_temp_index[z_temp_count] = z_local_index[2];
           };
-        };
-
-        if (local_z) {num_z++;};
+        }
+        else if (local_z == 1) {
+         z_temp_index[z_temp_count] = z_local_index[1]; 
+        } 
       }
+      
+      // Due to the prescence of MET, finding 2 Z is not possible.
+      // Therefore, we choose the one whose muons are in a more opposite in direction
+      if (num_z == 2) {
+        float phi1 = TMath::Abs(muon_phi[z_temp_index[0]]);
+        float phi2 = TMath::Abs(muon_phi[z_temp_index[1]]);
+        float phi3 = TMath::Abs(muon_phi[z_temp_index[2]]);
+        float phi4 = TMath::Abs(muon_phi[z_temp_index[3]]);
+
+        float diff1_2 = TMath::Abs(phi1 + phi2 - pi);
+        float diff3_4 = TMath::Abs(phi3 + phi4 - pi);
+
+        if (diff1_2 < diff3_4){
+          z_muon_index[0] = z_temp_index[0];
+          z_muon_index[1] = z_temp_index[1];
+        }
+        else {
+          z_muon_index[0] = z_temp_index[2];
+          z_muon_index[1] = z_temp_index[3];
+        }
+      }
+      if (num_z) {hasZ = true;}
     }
 };
 
+//Gets xy components from pT and phi
 class Vec_comp{
   public:
     Double_t px;
@@ -147,44 +208,75 @@ void wwz_finder(const std::string& file_name){
   t->SetBranchAddress("Muon_pt", &Muon_pt);
   t->SetBranchAddress("Muon_phi", &Muon_phi);
   t->SetBranchAddress("Muon_dxy", &Muon_dxy);
+  t->SetBranchAddress("Muon_eta", &Muon_eta);
   t->SetBranchAddress("MET_pt", &MET_pt);
   t->SetBranchAddress("MET_phi", &MET_phi);
 
-  int single_z = 0;
-  int double_z = 0;
+  int single_z_noWW = 0;
+  int single_z_posWW = 0;
   int no_z = 0;
+
+  vector<float> pt_visAVec;
+  vector<float> phi_visAVec;
+  vector<float> eta_visAVec;
+  vector<float> pt_visBVec;
+  vector<float> phi_visBVec;
+  vector<float> eta_visBVec;
+  vector<float> pt_METVec;
+  vector<float> phi_METVec;
+  vector<float> mT2Vec;
+  vector<float> mllVec;
 
   for (int i=0; i<nentries; i++){
     t->GetEntry(i);
     Z_finder Info(Muon_pt, Muon_phi, Muon_eta, Muon_charge);
-    int num_z = Info.num_z;
+    bool hasZ = Info.hasZ;
     std::array<int, 2> index = Info.z_muon_index;
-    if (num_z == 1){
-      single_z++;
+    if (hasZ){
 
       auto freemuons = free_muons(index); // free muons
       int f1 = std::get<0>(freemuons);
       int f2 = std::get<1>(freemuons);
       float pt_visA = Muon_pt[f1];
       float phi_visA = Muon_phi[f1];
+      float eta_visA = Muon_eta[f1];
       float pt_visB = Muon_pt[f2];
       float phi_visB = Muon_phi[f2];
+      float eta_visB = Muon_eta[f2];
 
-      Vec_comp p_visA(pt_visA, phi_visA);
-      Vec_comp p_visB(pt_visB, phi_visB);
-      Vec_comp p_miss(MET_pt, MET_phi);
-      
-      asymm_mt2_lester_bisect::disableCopyrightMessage();
+      if ((pt_visA > 25.0 || pt_visB > 25.0) && (pt_visA > 20.0 && pt_visB > 20.0)){
 
-      double mT2 = asymm_mt2_lester_bisect::get_mT2(muon_mass, p_visA.px, p_visA.py,
-                                                    muon_mass, p_visB.px, p_visB.py,
-                                                    p_miss.px, p_miss.py, 0, 0, 0);
-      std::cout << "Con valor mT2: " << mT2 << std::endl;
+        single_z_posWW += 1;
+        Vec_comp p_visA(pt_visA, phi_visA);
+        Vec_comp p_visB(pt_visB, phi_visB);
+        Vec_comp p_miss(MET_pt, MET_phi);
+        
+        asymm_mt2_lester_bisect::disableCopyrightMessage();
+
+        double mT2 = asymm_mt2_lester_bisect::get_mT2(muon_mass, p_visA.px, p_visA.py,
+                                                      muon_mass, p_visB.px, p_visB.py,
+                                                      p_miss.px, p_miss.py, 0, 0, 0);
+        Double_t mll = inv_mass(pt_visA, pt_visB, phi_visA, phi_visB, eta_visA, eta_visB);
+        pt_visAVec.push_back(pt_visA);
+        phi_visAVec.push_back(phi_visA);
+        eta_visAVec.push_back(eta_visA);
+        pt_visBVec.push_back(pt_visB);
+        phi_visBVec.push_back(phi_visB);
+        eta_visBVec.push_back(eta_visB);
+        pt_METVec.push_back(MET_pt);
+        phi_METVec.push_back(MET_phi);
+        mT2Vec.push_back(mT2);
+        mllVec.push_back(mll);
+      }
+      else {
+        single_z_noWW += 1;
+      }
     }
-    else if (num_z == 2){double_z++;}
     else {no_z++;}
   }
-  std::cout << "Se tienen " << single_z << " eventos con 1 Z." << std::endl;
-  std::cout << "Se tienen " << double_z << " eventos con 2 Z." << std::endl;
+  std::cout << "Se tienen " << single_z_posWW << " eventos con 1 Z y posibilidad de WW." << std::endl;
+  std::cout << "Se tienen " << single_z_noWW << " eventos con 1 Z sin WW." << std::endl;
   std::cout << "Se tienen " << no_z << " eventos con ningún Z." << std::endl;
+  ofstream outfile("data.csv", ofstream::out);
+  save_file(outfile, pt_visAVec, phi_visAVec, eta_visAVec, pt_visBVec, phi_visBVec, eta_visBVec, pt_METVec, phi_METVec, mT2Vec, mllVec);
 }

@@ -31,4 +31,4 @@ while IFS= read -r line; do
   ((i = i + 1))
 done <"../${INPUT[-1]}"
 
-hadd "../$OUTPUT_NAME" *.root
+hadd -f "../$OUTPUT_NAME" *.root
