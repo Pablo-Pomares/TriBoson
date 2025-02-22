@@ -18,14 +18,14 @@ using namespace std;
 const Float_t muon_mass = 0.1056583; // MeV/c2
 
 //Saves relevant data to csv file
-void save_file(ofstream& out, vector<float> pt_visA, vector<float> phi_visA, vector<float> eta_visA,
+void save_file(ofstream& out, vector<int> run, vector<long> event, vector<float> pt_visA, vector<float> phi_visA, vector<float> eta_visA,
                vector<float> pt_visB, vector<float> phi_visB, vector<float> eta_visB,
                vector<float> pt_MET, vector<float> phi_MET, vector<float> mT2, vector<float> mll){
   int vsize = pt_visA.size();
   if (out.is_open()){
-    out << "pt_visA" << "," << "phi_visA" << "," << "eta_visA" << "," << "pt_visB" << "," << "phi_visB" << "," << "eta_visB" << "," << "pt_MET" << "," << "phi_MET" << "," << "mT2" << ","<< "mll" << "\n";  
+    out << "run" << "," << "event" << "," << "pt_visA" << "," << "phi_visA" << "," << "eta_visA" << "," << "pt_visB" << "," << "phi_visB" << "," << "eta_visB" << "," << "pt_MET" << "," << "phi_MET" << "," << "mT2" << ","<< "mll" << "\n";  
     for (int i = 0; i < vsize; i++){
-      out << pt_visA[i] << "," << phi_visA[i] << "," << eta_visA[i] << "," << pt_visB[i] << "," <<  phi_visB[i] << "," << eta_visB[i] << "," << pt_MET[i] << "," << phi_MET[i] << "," <<  mT2[i] << "," <<  mll[i] << "\n";
+      out << run[i] << "," << event[i] << "," << pt_visA[i] << "," << phi_visA[i] << "," << eta_visA[i] << "," << pt_visB[i] << "," <<  phi_visB[i] << "," << eta_visB[i] << "," << pt_MET[i] << "," << phi_MET[i] << "," <<  mT2[i] << "," <<  mll[i] << "\n";
     }
     out.close();
     cout << "File written succesfully!\n";
@@ -215,6 +215,7 @@ void wwz_finder(const std::string& file_name){
   int single_z_noWW = 0;
   int single_z_posWW = 0;
   int no_z = 0;
+  int posWWZ = 0;
 
   vector<float> pt_visAVec;
   vector<float> phi_visAVec;
@@ -226,6 +227,11 @@ void wwz_finder(const std::string& file_name){
   vector<float> phi_METVec;
   vector<float> mT2Vec;
   vector<float> mllVec;
+  vector<int> runVec;
+  vector<long> eventVec;
+
+  vector<int> wwzrunVec;
+  vector<long> wwzeventVec;
 
   for (int i=0; i<nentries; i++){
     t->GetEntry(i);
@@ -267,6 +273,16 @@ void wwz_finder(const std::string& file_name){
         phi_METVec.push_back(MET_phi);
         mT2Vec.push_back(mT2);
         mllVec.push_back(mll);
+        runVec.push_back(run);
+        eventVec.push_back(event);
+
+        bool passmT2 = (mT2 >= 60) && (mT2 <= 80);
+        bool passMET_pt = (MET_pt >= 60) && (MET_pt <= 80);
+        if ((mll > 100.0) && passMET_pt && passMET_pt) {
+          posWWZ += 1;
+          wwzrunVec.push_back(run);
+          wwzeventVec.push_back(event);
+        }
       }
       else {
         single_z_noWW += 1;
@@ -274,9 +290,15 @@ void wwz_finder(const std::string& file_name){
     }
     else {no_z++;}
   }
-  std::cout << "Se tienen " << single_z_posWW << " eventos con 1 Z y posibilidad de WW." << std::endl;
-  std::cout << "Se tienen " << single_z_noWW << " eventos con 1 Z sin WW." << std::endl;
-  std::cout << "Se tienen " << no_z << " eventos con ningún Z." << std::endl;
-  ofstream outfile("data.csv", ofstream::out);
-  save_file(outfile, pt_visAVec, phi_visAVec, eta_visAVec, pt_visBVec, phi_visBVec, eta_visBVec, pt_METVec, phi_METVec, mT2Vec, mllVec);
+  std::cout << "Se tiene(n) " << posWWZ << " evento(s) con WWZ" << std::endl;
+  if (posWWZ){
+    for (int i=0; i<wwzeventVec.size(); i++){
+      cout << "   En " << "run: " << wwzrunVec[i] << " event: " << wwzeventVec[i] << "\n"; 
+    }
+  }
+  std::cout << "Se tiene(n) " << single_z_posWW << " evento(s) con 1 Z y posibilidad de WW." << std::endl;
+  //std::cout << "Se tiene(n) " << single_z_noWW << " evento(s) con 1 Z sin WW." << std::endl;
+  //std::cout << "Se tienen " << no_z << " eventos con ningún Z." << std::endl;
+  ofstream outfile("data2.csv", ofstream::out);
+  save_file(outfile, runVec, eventVec, pt_visAVec, phi_visAVec, eta_visAVec, pt_visBVec, phi_visBVec, eta_visBVec, pt_METVec, phi_METVec, mT2Vec, mllVec);
 }
