@@ -1,3 +1,13 @@
+//***ROOT******************************************************************
+//*Version: ROOT 6.32.04                                                  *
+//*Description: Graphs                                                    *                                      
+//*                                                                       *
+//*Created: 22 Dec 2024                                                   *
+//*Last Modified: 22 Feb 2025                                             *
+//*Author: Pablo Pomares                                                  *
+//*Email: pablo.pomaresv@alumno.buap.mx                                   *
+//*************************************************************************
+
 #include <TROOT.h>
 #include "TCanvas.h"
 #include "TLegend.h"
@@ -7,19 +17,11 @@
 
 using namespace std;
 
-void showoff(const string& file_name){
-  TTree *t = new TTree("t", "t");
-  t->ReadFile(file_name.c_str(), "pt_visA/F:phi_visA/F:eta_visA/F:pt_visB/F:phi_visB/F:eta_visB/F:pt_MET/F:phi_MET/F:mT2/F:mll/F");
+void graph(const string& file_name){
+  TFile *f = TFile::Open(file_name.c_str(), "READ")
+  TTree *t;
   
   const int nentries = t->GetEntries();
-  Float_t pt_visA, pt_visB, phi_visA, phi_visB, mT2, mll;
-
-  t->SetBranchAddress("pt_visA", &pt_visA);
-  t->SetBranchAddress("phi_visA", &phi_visA);
-  t->SetBranchAddress("pt_visB", &pt_visB);
-  t->SetBranchAddress("phi_visB", &phi_visB);
-  t->SetBranchAddress("mT2", &mT2);
-  t->SetBranchAddress("mll", &mll);
 
   TCanvas* c1 = new TCanvas("c1", "", 800, 600); //Canvas for mT2
   TCanvas* c2 = new TCanvas("c2", "", 800, 600); //Canvas for mll
