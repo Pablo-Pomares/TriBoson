@@ -17,8 +17,8 @@
 
 using namespace std;
 
-void wwz_finder(const std::string& file_name){
-  TFile *f = TFile::Open(file_name.c_str(), "READ");
+void wwz_finder(const std::string& file_dir){
+  TFile *f = TFile::Open(file_dir.c_str(), "READ");
   TTree* t;
   f->GetObject("Events", t);
   

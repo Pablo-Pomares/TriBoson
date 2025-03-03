@@ -185,29 +185,18 @@ std::tuple<int, int> free_muons(std::array<int, 2> arr){
   return free_muons;
 };
 
-class four_muon_mll{
-  private:
-    int z_temp_index[4] = {-1, -1, -1, -1}; // If more than one particle found in Z range the first pair
-                                            // would correspond to the index of first founded Z and the last pair for the second one.
-    int z_temp_count = 0;
-    UInt_t num_z;
+class Four_muon_mll{
+	public:
+    Double_t high_mass = 0.0; // mass of the highest pair
+    Double_t low_mass = numeric_limits<Double_t>::max(); // mass of the lowest pair
+    array<int, 2> high_index;
+    array<int, 2> low_index;
 
-  public:
-    bool hasZ = false;
-    Double_t mll_mass = 0.0;
-    std::array<int, 2> high_index;
-    Double_t pi = TMath::Pi();
-
-    highest_mll(Float_t muon_pt[4], Float_t muon_phi[4], Float_t muon_eta[4], Int_t muon_charge[4])
-      : num_z(0), high_index{-1, -1}
+    Four_muon_mll(Float_t muon_pt[4], Float_t muon_phi[4], Float_t muon_eta[4], Int_t muon_charge[4])
+      : high_index{-1, -1}, low_index{-1, -1}
     {
-      for (int i=0; i<4; i++){
-        int local_z = 0; // Number of Z candidates for that share a muon
-        int z_local_index[3] = {-1, -1, -1};
-        Double_t local_masses[2] = {0., 0.};
-
-        for (int j=i+1; j<4; j++){
-          // Muon properties
+			for (int i=0; i<4; i++){
+				for (int j=i+1; j<4; j++){
           Float_t pt1 = muon_pt[i];
           Float_t pt2 = muon_pt[j];
           Float_t phi1 = muon_phi[i];
@@ -218,47 +207,20 @@ class four_muon_mll{
           Int_t q2 = muon_charge[j];
 
           // Check for different charge
-          bool same_charge = q1 + q2;
-          z_local_index[0] = i;
+          bool opposite_charge = q1 + q2;
 
-          if (!same_charge) {
+          if (opposite_charge) {
             Double_t m = inv_mass(pt1, pt2, phi1, phi2, eta1, eta2);
-            if (m > 81.2 && m < 101.2){
-              local_masses[local_z] = m;
-              z_local_index[local_z+1] = j;
-              local_z++;
-            };
-          };
-        };
-
-        if (local_z){
-          z_temp_index[z_temp_count] = z_local_index[0];
-          num_z += 1;
-          z_temp_count += 1;
-        }
-
-        // If more there is more than one local Z choose the one whose
-        // phi difference is closest to pi
-        if (local_z == 2){
-          float phi1 = TMath::Abs(muon_phi[z_local_index[0]]);
-          float phi2 = TMath::Abs(muon_phi[z_local_index[1]]);
-          float phi3 = TMath::Abs(muon_phi[z_local_index[2]]);
-
-          float diff1_2 = TMath::Abs(phi1 + phi2 - pi);
-          float diff1_3 = TMath::Abs(phi1 + phi3 - pi);
-
-          if (diff1_2 < diff1_3){
-            massZ = local_masses[0];
-            z_temp_index[z_temp_count] = z_local_index[1];
-          }
-          else {
-            massZ = local_masses[1];
-            z_temp_index[z_temp_count] = z_local_index[2];
-          };
-        }
-        else if (local_z == 1) {
-         z_temp_index[z_temp_count] = z_local_index[1]; 
-        } 
+						if (m > high_mass){
+							high_index = {i, j};
+							high_mass = m;
+						}
+						if (m < low_mass){
+							low_index = {i, j};
+							low_mass = m;
+						} 
+					}
+				}
       }
-    }
+		}
 };

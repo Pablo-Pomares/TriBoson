@@ -1,20 +1,24 @@
 // **ROOT**
 // Version: ROOT 6.32.04
-// Description: Filter for events containing less than 4 muons and 
-//              all jets that passes a btag
+// Description: Searches for events containing 2 muons and that pass
+//              other search parameters.
 //
-// Created: 30 Nov 2024
-// Last Modified: 12 Jan 2025
+// Created: 25 Feb 2025
+// Last Modified: 28 Feb 2025
 // Author: Pablo Pomares
 // Email: pablo.pomaresv@alumno.buap.mx
 //
 
 #include <string>
 #include <iostream>
+#include <vector>
 #include "TMath.h"
 #include "TFile.h"
 #include "TTree.h"
 
+using namespace std;
+
+// Function to calculate the radial distance of a muon to a jet
 Float_t deltaR(Float_t eta1, Float_t eta2, Float_t phi1, Float_t phi2){
   Float_t Deta2 = (eta1 - eta2)*(eta1 - eta2);
   Float_t Dphi2 = (phi1 - phi2)*(phi1 - phi2);
@@ -47,6 +51,16 @@ void filter(const std::string& file_dir, const std::string& output_name){
           Muon_pt[25], Muon_eta[25], Muon_phi[25];
   Bool_t Muon_isGlobal[25];
   Int_t Muon_charge[25];
+//  Float_t* Jet_btagDeepB = nullptr;
+//  Float_t* Jet_pt = nullptr;
+//  Float_t* Jet_phi = nullptr;
+//  Float_t* Jet_eta = nullptr;
+//  Float_t MET_pt;
+//  Float_t* Muon_pt = nullptr;
+//  Float_t* Muon_eta = nullptr;
+//  Float_t* Muon_phi = nullptr;
+//  Bool_t* Muon_isGlobal = nullptr;
+
   t_old->SetBranchAddress("nMuon", &nMuon);
   t_old->SetBranchAddress("Muon_pt", &Muon_pt);
   t_old->SetBranchAddress("Muon_eta", &Muon_eta);
@@ -60,15 +74,36 @@ void filter(const std::string& file_dir, const std::string& output_name){
   t_old->SetBranchAddress("Muon_charge", &Muon_charge);
   t_old->SetBranchAddress("MET_pt", &MET_pt);
 
+  int num_passnMuon = 0;
+  int num_passMETpt = 0;
+  int num_passnJet = 0;
+  int num_passAllGlobal = 0;
+  int num_passtotal_charge = 0;
+  int num_passdeltaR = 0;
+  int num_passLeadingMuonpt = 0;
+  int num_passbtag = 0;
+
   TFile newfile(output_name.c_str(), "recreate"); // Creates new file
   auto t_new = t_old->CloneTree(0);
 
-  for (UInt_t i=0; i<nentries; i++){
+  for (int i=0; i<nentries; i++){
     t_old->GetEntry(i);
-
+    
     // Checks that only two muons in the event. If it fails the event is skipped.
-    bool passnMuon = (nMuon == 4);
-    if (!passnMuon){continue;};
+    bool passnMuon = (nMuon == 2);
+    if (!passnMuon){continue;} else {num_passnMuon += 1;};
+    
+    // Due to the WW production, a minimum missing transverse energy is requiered due to the
+    // prescence of neutrinos.
+    bool passMETpt = false;
+    if (MET_pt > 20.0){
+      passMETpt = true;
+    };
+    if (!passMETpt) {continue;} else {num_passMETpt += 1;};
+
+    // Checks for the number of jets. Less or equal than one is requiered
+    bool passnJet = true; //(nJet < 2);
+    if (!passnJet){continue;} else {num_passnJet += 1;};
 
     // For a better event selection, only global muons are used.
     bool passAllGlobal = true;
@@ -77,27 +112,25 @@ void filter(const std::string& file_dir, const std::string& output_name){
         passAllGlobal = false;
       };
     };
-    if (!passAllGlobal) {continue;};
+    if (!passAllGlobal) {continue;} else {num_passAllGlobal += 1;};
 
     // Opposite charge of the muons is needed 
     int sumCharge = 0;
     for (UInt_t j=0; j<nMuon; j++){
       sumCharge += Muon_charge[j];
     };
-    bool chargeViolation = sumCharge;
-    if (chargeViolation) {continue;};
+    bool total_charge = sumCharge;
+    if (total_charge) {continue;} else {num_passtotal_charge += 1;};
 
     // We select the events were the leading muon is greater than 25 GeV and the subleading muon is 
     // greater than 20 GeV
-    std::sort(&Muon_pt[0], &Muon_pt[5], std::greater<Float_t>());
-    float subLeadingMuonsSum = Muon_pt[0] + Muon_pt[1];
-    float leadingMuonsSum = Muon_pt[2] + Muon_pt[3];
-    bool passLeadingMuonpt = true;
-    if ((leadingMuonsSum < 50.0) && (subLeadingMuonsSum < 20.0)){
-      passLeadingMuonpt = false;
-      //break;
+    std::sort(&Muon_pt[0], &Muon_pt[2], std::greater<Float_t>());
+    float subLeadingMuons = Muon_pt[1];
+    float leadingMuons = Muon_pt[0];
+    bool passLeadingMuonpt = ((leadingMuons > 25.0) && (subLeadingMuons > 20.0));
+    if (!passLeadingMuonpt){continue;} else {
+      num_passLeadingMuonpt += 1;
     };
-    if (!passLeadingMuonpt){continue;};
 
     // A medium b-tag is implemented to reduce tt background
     bool passbTag = true;
@@ -105,12 +138,11 @@ void filter(const std::string& file_dir, const std::string& output_name){
       for (UInt_t j=0; j<nJet; j++){
         if (Jet_btagDeepB[j] > 0.5847){
           passbTag = false;
-          //break;
         };
       };
     };
-    if (!passbTag) {continue;};
-
+    if (!passbTag) {continue;} else {num_passbtag += 1;};
+    
     // A radial distance greater than 0.4 is desired
     bool passdeltaR = true;
     if (nJet > 0){
@@ -119,24 +151,24 @@ void filter(const std::string& file_dir, const std::string& output_name){
           Float_t dR = deltaR(Muon_eta[j], Jet_eta[k], Muon_phi[j], Jet_phi[k]);
           if (dR < 0.4){
             passdeltaR = false;
-            //break;
           }
         }
       };
     };
-    if (!passbTag) {continue;};
-
-    // Due to the WW production, a minimum missing transverse energy is requiered due to the
-    // prescence of neutrinos.
-    bool passMETpt = false;
-    if (MET_pt > 20.0){
-      passMETpt = true;
-    };
-    if (!passMETpt) {continue;};
+    if (!passdeltaR) {continue;} else {num_passdeltaR += 1;};
 
     t_new->Fill();
   };
 
   t_new->Print();
   newfile.Write();
+
+  cout << "Pass nMuon criteria: " << num_passnMuon << "\n";
+  cout << "Pass MET_pt criteria: " << num_passMETpt << "\n";
+  cout << "Pass nJet criteria: " << num_passnJet << "\n";
+  cout << "Pass AllGlobal criteria: " << num_passAllGlobal << "\n";
+  cout << "Pass total charge criteria: " << num_passtotal_charge << "\n";
+  cout << "Pass Muon pt criteria: " << num_passLeadingMuonpt << "\n";
+  cout << "Pass b tag criteria: " << num_passbtag << "\n";
+  cout << "Pass delta R criteria: " << num_passdeltaR << "\n";
 }
