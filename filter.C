@@ -80,12 +80,12 @@ void filter(const std::string& file_dir, const std::string& output_name){
     if (!passAllGlobal) {continue;};
 
     // Opposite charge of the muons is needed 
-    int sumCharge = 0;
+    int charge_sum = 0;
     for (UInt_t j=0; j<nMuon; j++){
-      sumCharge += Muon_charge[j];
+      charge_sum += Muon_charge[j];
     };
-    bool chargeViolation = sumCharge;
-    if (chargeViolation) {continue;};
+    bool total_charge = (charge_sum == 0);
+    if (!total_charge) {continue;};
 
     // We select the events were the leading muon is greater than 25 GeV and the subleading muon is 
     // greater than 20 GeV
@@ -118,21 +118,17 @@ void filter(const std::string& file_dir, const std::string& output_name){
         for (UInt_t k=0; k<nJet; k++){
           Float_t dR = deltaR(Muon_eta[j], Jet_eta[k], Muon_phi[j], Jet_phi[k]);
           if (dR < 0.4){
-            passdeltaR = false;
-            //break;
+            nJet--;
           }
         }
       };
     };
-    if (!passbTag) {continue;};
 
     // Due to the WW production, a minimum missing transverse energy is requiered due to the
     // prescence of neutrinos.
-    bool passMETpt = false;
-    if (MET_pt > 20.0){
-      passMETpt = true;
+    if (MET_pt < 20.0){
+      continue;
     };
-    if (!passMETpt) {continue;};
 
     t_new->Fill();
   };

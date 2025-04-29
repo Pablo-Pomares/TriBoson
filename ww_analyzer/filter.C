@@ -96,14 +96,10 @@ void filter(const std::string& file_dir, const std::string& output_name){
     // Due to the WW production, a minimum missing transverse energy is requiered due to the
     // prescence of neutrinos.
     bool passMETpt = false;
-    if (MET_pt > 20.0){
+    if (MET_pt > 55.0){
       passMETpt = true;
     };
     if (!passMETpt) {continue;} else {num_passMETpt += 1;};
-
-    // Checks for the number of jets. Less or equal than one is requiered
-    bool passnJet = true; //(nJet < 2);
-    if (!passnJet){continue;} else {num_passnJet += 1;};
 
     // For a better event selection, only global muons are used.
     bool passAllGlobal = true;
@@ -143,19 +139,21 @@ void filter(const std::string& file_dir, const std::string& output_name){
     };
     if (!passbTag) {continue;} else {num_passbtag += 1;};
     
-    // A radial distance greater than 0.4 is desired
-    bool passdeltaR = true;
+    // If radial distance lesser than 0.4, jet is rejected
     if (nJet > 0){
       for (UInt_t j=0; j<nMuon; j++){
         for (UInt_t k=0; k<nJet; k++){
           Float_t dR = deltaR(Muon_eta[j], Jet_eta[k], Muon_phi[j], Jet_phi[k]);
           if (dR < 0.4){
-            passdeltaR = false;
+            nJet -= 1;
           }
         }
       };
     };
-    if (!passdeltaR) {continue;} else {num_passdeltaR += 1;};
+
+    // Checks for the number of jets. Less or equal than one is requiered
+    bool passnJet = (nJet < 2);
+    if (!passnJet){continue;} else {num_passnJet += 1;};
 
     t_new->Fill();
   };
@@ -165,10 +163,9 @@ void filter(const std::string& file_dir, const std::string& output_name){
 
   cout << "Pass nMuon criteria: " << num_passnMuon << "\n";
   cout << "Pass MET_pt criteria: " << num_passMETpt << "\n";
-  cout << "Pass nJet criteria: " << num_passnJet << "\n";
   cout << "Pass AllGlobal criteria: " << num_passAllGlobal << "\n";
   cout << "Pass total charge criteria: " << num_passtotal_charge << "\n";
   cout << "Pass Muon pt criteria: " << num_passLeadingMuonpt << "\n";
   cout << "Pass b tag criteria: " << num_passbtag << "\n";
-  cout << "Pass delta R criteria: " << num_passdeltaR << "\n";
+  cout << "Pass nJet criteria: " << num_passnJet << "\n";
 }

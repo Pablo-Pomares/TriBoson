@@ -14,6 +14,12 @@
 using namespace std;
 
 const Float_t muon_mass = 0.1056583; // MeV/c2
+const double z_mass = 91.1880; // GeV/c2 pm 0.0020 per PDG(2025) 
+const double pi = TMath::Pi();
+const double luminosity = 16.290713420;
+const double brTo4mu = 0.0004138;
+
+//------------------General------------------
 
 //Saves relevant data to csv file
 void save_file(ofstream& out, vector<int> run, vector<long> event, vector<float> pt_visA, vector<float> phi_visA, vector<float> eta_visA,
@@ -47,6 +53,19 @@ Double_t inv_mass(Float_t pt1, Float_t pt2, Float_t phi1, Float_t phi2, Float_t 
   return m;
 }
 
+//Gets xy components from pT and phi
+class Vec_comp{
+  public:
+    Double_t px;
+    Double_t py;
+
+    Vec_comp(Double_t pt, Double_t phi){
+      px = pt*TMath::Cos(phi);
+      py = pt*TMath::Sin(phi);
+    }
+};
+
+//------------------WWZ------------------
 
 // Find the Z bosons on a event and its mass.
 // If it finds more than one candidate it selects the more probable one. 
@@ -151,18 +170,6 @@ class Z_finder{
     }
 };
 
-//Gets xy components from pT and phi
-class Vec_comp{
-  public:
-    Double_t px;
-    Double_t py;
-
-    Vec_comp(Double_t pt, Double_t phi){
-      px = pt*TMath::Cos(phi);
-      py = pt*TMath::Sin(phi);
-    }
-};
-
 //Muons that are not part of the Z boson
 std::tuple<int, int> free_muons(std::array<int, 2> arr){
   int free_index[2];
@@ -185,6 +192,7 @@ std::tuple<int, int> free_muons(std::array<int, 2> arr){
   return free_muons;
 };
 
+// Returns invariant mass of the higher and the lower pair
 class Four_muon_mll{
 	public:
     Double_t high_mass = 0.0; // mass of the highest pair
@@ -223,4 +231,73 @@ class Four_muon_mll{
 				}
       }
 		}
+};
+
+float get_pt_4l (Float_t Muon_pt[4], Float_t Muon_phi[4]){
+
+  Vec_comp mu1(Muon_pt[0], Muon_phi[0]);
+  Vec_comp mu2(Muon_pt[1], Muon_phi[1]);
+  Vec_comp mu3(Muon_pt[2], Muon_phi[2]);
+  Vec_comp mu4(Muon_pt[3], Muon_phi[3]);
+  float fourl_pt = TMath::Sqrt((mu1.px + mu2.px + mu3.px + mu4.px)*(mu1.px + mu2.px + mu3.px + mu4.px) + (mu1.py + mu2.py + mu3.py + mu4.py)*(mu1.py + mu2.py + mu3.py + mu4.py));
+  bool pass_4l_pt = (fourl_pt > 40); 
+
+  return fourl_pt;
+}
+
+//------------------WW------------------
+
+// Checks if the perpendicular component of p^miss_T with respect to a given muon is greater or 
+// equal to 20 GeV if it is requiered.
+bool pt_miss_proj_test(Float_t MET_pt, Float_t MET_phi, Float_t Muon_phi){
+  float pt_miss_proj = 0.0;
+  double min_dphi = pi/2;
+
+  // Measures difference in angles between a given muon and the missing transverse energy.
+  float dphi = TMath::Abs(MET_phi - Muon_phi);
+  if (dphi > TMath::Pi()) {
+      dphi = 2.0 * TMath::Pi() - dphi;
+    }
+  if (dphi < min_dphi){
+    pt_miss_proj = MET_pt*TMath::Sin(dphi);
+  };
+
+  bool pass_pt_miss_proj = (pt_miss_proj > 20.0);
+
+  return pass_pt_miss_proj;
+}
+
+// Searches for WW candidates.
+class WW_Analyzer{
+  public:
+  // Conditions WW events must follow
+  Float_t mll;
+  Float_t diff_to_Z = 0.0; // to filter Drell Yan background
+  bool pass_mll = false;
+  bool pass_pt_miss_proj = false;
+  bool pass_notdy = false;
+  bool pass_pairpT = false;
+  // All in one, for convinience
+  bool pass_all;
+
+  WW_Analyzer(Float_t Muon_pt[2], Float_t Muon_phi[2], Float_t Muon_eta[2], Float_t MET_pt, Float_t MET_phi){
+    mll = inv_mass(Muon_pt[0], Muon_pt[1], Muon_phi[0], Muon_phi[1], Muon_eta[0], Muon_phi[1]);
+    if (mll > 40) {pass_mll = true;};
+
+    diff_to_Z = TMath::Abs(mll - z_mass);
+    if (diff_to_Z > 15) {pass_notdy = true;};
+
+    for (int i=0; i<2; i++){
+      if (pass_pt_miss_proj) {continue;};
+      pass_pt_miss_proj = pt_miss_proj_test(MET_pt, MET_phi, Muon_phi[i]);
+    }
+
+    Vec_comp mu1(Muon_pt[0], Muon_phi[0]);
+    Vec_comp mu2(Muon_pt[1], Muon_phi[1]);
+    float pair_pt = TMath::Sqrt((mu1.px + mu2.px)*(mu1.px + mu2.px) + (mu1.py + mu2.py)*(mu1.py + mu2.py));
+    pass_pairpT = (pair_pt > 30.0);
+
+    pass_all = (pass_mll && pass_pt_miss_proj && pass_notdy && pass_pairpT); 
+  }
+
 };
