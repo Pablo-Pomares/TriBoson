@@ -9,6 +9,7 @@
 //*************************************************************************
 
 #include <TROOT.h>
+#include <TStyle.h>
 #include "TCanvas.h"
 #include "TLegend.h"
 #include "TStyle.h"
@@ -21,6 +22,10 @@
 using namespace std;
 
 void graph(const string& file_name){
+
+  gStyle->SetHistLineStyle(0);
+  gStyle->SetHistLineStyle(0);
+
   TFile *f = TFile::Open(file_name.c_str(), "READ");
   TTree *t;
   f->GetObject("Events", t);
@@ -57,13 +62,15 @@ void graph(const string& file_name){
   TCanvas* c4 = new TCanvas("c4", "", 800, 600); //Canvas for mT2
   TCanvas* c5 = new TCanvas("c5", "", 800, 600); //Canvas for high mll
   TCanvas* c6 = new TCanvas("c6", "", 800, 600); //Canvas for low mll
+  TCanvas* c7 = new TCanvas("c7", "", 800, 600); //Canvas for METpT
   TH1F* h4 = new TH1F("h4", "all pT4l", 30, 0, 90);
   TH1F* h5 = new TH1F("h5", "all High mll", 100, 0, 200);
   TH1F* h6 = new TH1F("h6", "all Low mll", 100, 0, 200);
+  TH1F* h7 = new TH1F("h7", "all METpT", 100, 0, 200);
 
   for (int i = 0; i < nentries; i++){
     t->GetEntry(i);
-    float pT_4l = pass_pt_4l(Muon_pt, Muon_phi);
+    float pT_4l = get_pt_4l(Muon_pt, Muon_phi);
     Z_finder Info1(Muon_pt, Muon_phi, Muon_eta, Muon_charge);
     std::array<int, 2> index = Info1.z_muon_index;
     Four_muon_mll Info2(Muon_pt, Muon_phi, Muon_eta, Muon_charge);
@@ -112,6 +119,7 @@ void graph(const string& file_name){
     h4->Fill(pT_4l);
     h5->Fill(Info2.high_mass);
     h6->Fill(Info2.low_mass);
+    h7->Fill(MET_pt);
   }
   
   c1->cd();
@@ -131,4 +139,7 @@ void graph(const string& file_name){
 
   c6->cd();
   h6->Draw();
+
+  c7->cd();
+  h7->Draw();
 }

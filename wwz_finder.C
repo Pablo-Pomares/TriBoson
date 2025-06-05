@@ -66,7 +66,6 @@ void wwz_finder(const std::string& file_dir){
   for (int i=0; i<nentries; i++){
     t->GetEntry(i);
     Z_finder Info(Muon_pt, Muon_phi, Muon_eta, Muon_charge);
-    float pt4l = get_pt_4l(Muon_pt, Muon_phi);
     bool hasZ = Info.hasZ;
     std::array<int, 2> index = Info.z_muon_index;
     if (hasZ){
@@ -90,17 +89,12 @@ void wwz_finder(const std::string& file_dir){
 
       if (min_pt_z && min_pt_ww){
 
+        float pt4l = get_pt_4l(Muon_pt, Muon_phi);
         single_z_posWW += 1;
         Vec_comp p_visA(pt_visA, phi_visA);
         Vec_comp p_visB(pt_visB, phi_visB);
         Vec_comp p_miss(MET_pt, MET_phi);
         
-        asymm_mt2_lester_bisect::disableCopyrightMessage();
-
-        double mT2 = asymm_mt2_lester_bisect::get_mT2(muon_mass, p_visA.px, p_visA.py,
-                                                      muon_mass, p_visB.px, p_visB.py,
-                                                      p_miss.px, p_miss.py, 0, 0, 0);
-
         WW_Analyzer Info_ww(free_muon_pt, free_muon_phi, free_muon_eta, MET_pt, MET_phi);
         pt_visAVec.push_back(pt_visA);
         phi_visAVec.push_back(phi_visA);
@@ -110,14 +104,12 @@ void wwz_finder(const std::string& file_dir){
         eta_visBVec.push_back(eta_visB);
         pt_METVec.push_back(MET_pt);
         phi_METVec.push_back(MET_phi);
-        mT2Vec.push_back(mT2);
         runVec.push_back(run);
         eventVec.push_back(event);
 
-        bool passmT2 = ((mT2 > 15) && (mT2 < 50));
-        bool passMET_pt = (MET_pt > 60);
-//        if (passMET_pt && (pt4l > 40) && Info_ww.pass_all) {
-        if (passMET_pt && Info_ww.pass_all){
+        bool passMET_pt = (MET_pt > 70);
+        if (passMET_pt && (pt4l > 40) && Info_ww.pass_all) {
+//        if (passMET_pt && Info_ww.pass_all){
 //        if (passMET_pt && (pt4l > 40)){
           cout << pt4l << " " << Muon_pt[0] << ":" << Muon_phi[0] << " " << Muon_pt[1] << ":" << Muon_phi[1]  << " " << Muon_pt[2] << ":" << Muon_phi[2]  << " " << Muon_pt[3] << ":" << Muon_phi[3]  << endl;
           posWWZ += 1;
@@ -131,9 +123,9 @@ void wwz_finder(const std::string& file_dir){
     }
     else {no_z++;}
   }
-  float wwz_cross_section = posWWZ/(luminosity*brTo4mu);
+  float wwz_cross_section = posWWZ/(0.9452*luminosity*brTo4mu);
   std::cout << "Se tiene(n) " << posWWZ << " evento(s) con WWZ" << std::endl;
-  if (false){
+  if (true){
     for (int i=0; i<wwzeventVec.size(); i++){
       cout << "   En " << "run: " << wwzrunVec[i] << " event: " << wwzeventVec[i] << "\n"; 
     }

@@ -247,36 +247,17 @@ float get_pt_4l (Float_t Muon_pt[4], Float_t Muon_phi[4]){
 
 //------------------WW------------------
 
-// Checks if the perpendicular component of p^miss_T with respect to a given muon is greater or 
-// equal to 20 GeV if it is requiered.
-bool pt_miss_proj_test(Float_t MET_pt, Float_t MET_phi, Float_t Muon_phi){
-  float pt_miss_proj = 0.0;
-  double min_dphi = pi/2;
-
-  // Measures difference in angles between a given muon and the missing transverse energy.
-  float dphi = TMath::Abs(MET_phi - Muon_phi);
-  if (dphi > TMath::Pi()) {
-      dphi = 2.0 * TMath::Pi() - dphi;
-    }
-  if (dphi < min_dphi){
-    pt_miss_proj = MET_pt*TMath::Sin(dphi);
-  };
-
-  bool pass_pt_miss_proj = (pt_miss_proj > 20.0);
-
-  return pass_pt_miss_proj;
-}
-
 // Searches for WW candidates.
 class WW_Analyzer{
   public:
   // Conditions WW events must follow
-  Float_t mll;
+  Float_t mll = 0;
   Float_t diff_to_Z = 0.0; // to filter Drell Yan background
   bool pass_mll = false;
   bool pass_pt_miss_proj = false;
   bool pass_notdy = false;
   bool pass_pairpT = false;
+  float pt_miss_proj = 0.0;
   // All in one, for convinience
   bool pass_all;
 
@@ -289,7 +270,7 @@ class WW_Analyzer{
 
     for (int i=0; i<2; i++){
       if (pass_pt_miss_proj) {continue;};
-      pass_pt_miss_proj = pt_miss_proj_test(MET_pt, MET_phi, Muon_phi[i]);
+      pass_pt_miss_proj = WW_Analyzer::pt_miss_proj_test(MET_pt, MET_phi, Muon_phi[i]);
     }
 
     Vec_comp mu1(Muon_pt[0], Muon_phi[0]);
@@ -300,4 +281,22 @@ class WW_Analyzer{
     pass_all = (pass_mll && pass_pt_miss_proj && pass_notdy && pass_pairpT); 
   }
 
+  // Checks if the perpendicular component of p^miss_T with respect to a given muon is greater or 
+  // equal to 20 GeV if it is requiered.
+  bool pt_miss_proj_test(Float_t MET_pt, Float_t MET_phi, Float_t Muon_phi){
+    double min_dphi = pi/2;
+
+    // Measures difference in angles between a given muon and the missing transverse energy.
+    float dphi = TMath::Abs(MET_phi - Muon_phi);
+    if (dphi > TMath::Pi()) {
+        dphi = 2.0 * TMath::Pi() - dphi;
+      }
+    if (dphi < min_dphi){
+      pt_miss_proj = MET_pt*TMath::Sin(dphi);
+    };
+
+    bool pass_pt_miss_proj = (pt_miss_proj > 20.0);
+
+    return pass_pt_miss_proj;
+  }
 };
